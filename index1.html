@@ -1,0 +1,308 @@
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            background-color: #f5f5f5;
+            font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            overflow-x: auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin: 20px auto;
+            max-width: 1650px;
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border-radius: 6px;
+            font-size: 14px;
+            pointer-events: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .axis-label {
+            font-size: 14px;
+            fill: #666;
+            font-weight: 500;
+        }
+
+        .title {
+            font-size: 24px;
+            fill: #333;
+            font-weight: 600;
+        }
+
+        .dot {
+            transition: all 0.3s ease;
+        }
+
+        .dot:hover {
+            opacity: 1;
+            filter: brightness(0.9);
+        }
+
+        .tick text {
+            font-size: 12px;
+            fill: #666;
+        }
+
+        .tick line {
+            stroke: #e0e0e0;
+        }
+
+        .domain {
+            stroke: #e0e0e0;
+        }
+
+        /* New legend styles */
+        .legend {
+            position: absolute;
+            right: 50px;
+            top: 100px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            cursor: pointer;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .legend-color:hover {
+            transform: scale(1.1);
+        }
+
+        .legend-text {
+            font-size: 14px;
+            color: #333;
+        }
+
+        .color-picker {
+            opacity: 0;
+            width: 30px;
+            height: 30px;
+            position: absolute;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="scatter-plot"></div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script>
+        // Initial color palette
+        const colors = [
+            "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEEAD",
+            "#D4A5A5", "#9FA4C4", "#B5EAD7", "#FF9AA2", "#C7CEEA"
+        ];
+
+        const margin = { top: 70, right: 30, bottom: 200, left: 150 };
+        const width = 1600 - margin.left - margin.right;
+        const height = 600 - margin.top - margin.bottom;
+
+        const svg = d3.select("#scatter-plot")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // Create color map to store current colors
+        let colorMap = new Map();
+
+        d3.csv("data1.csv", d => ({
+            Event: d.Event,
+            "Sub-Class": d["Sub-Class"],
+            "Participant Count": +d["Participant Count"]
+        })).then(data => {
+            const uniqueSubClasses = Array.from(new Set(data.map(d => d["Sub-Class"]))).sort();
+            
+            // Initialize color map
+            uniqueSubClasses.forEach((subClass, i) => {
+                colorMap.set(subClass, colors[i % colors.length]);
+            });
+
+            const colorScale = d => colorMap.get(d);
+
+            const labelSpacing = 20;
+            const totalWidth = data.length * labelSpacing;
+            const xScale = d3.scaleBand()
+                .domain(data.map(d => d.Event))
+                .range([0, totalWidth])
+                .padding(0.2);
+
+            const yScale = d3.scaleBand()
+                .domain(uniqueSubClasses)
+                .range([height, 0])
+                .padding(0.2);
+
+            const radiusScale = d3.scaleSqrt()
+                .domain([0, d3.max(data, d => d["Participant Count"])])
+                .range([5, 25]);
+
+            // Create axes
+            const xAxis = d3.axisBottom(xScale)
+                .tickSize(-height)
+                .tickValues(xScale.domain().filter((d, i) => i % 1 === 0));
+
+            const yAxis = d3.axisLeft(yScale)
+                .tickSize(-width);
+
+            // Add X axis
+            const xAxisGroup = svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(xAxis);
+
+            xAxisGroup.selectAll("text")
+                .attr("transform", "rotate(-30)")
+                .style("text-anchor", "end")
+                .attr("dx", "-1.5em")
+                .attr("dy", "0.5em")
+                .style("font-size", "13px")
+                .style("font-weight", "500");
+
+            // Add Y axis
+            svg.append("g")
+                .call(yAxis);
+
+            // Create tooltip
+            const tooltip = d3.select("body")
+                .append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0);
+
+            // Function to update circle colors
+            function updateColors() {
+                svg.selectAll(".dot")
+                    .transition()
+                    .duration(300)
+                    .style("fill", d => colorMap.get(d["Sub-Class"]));
+            }
+
+            // Add dots
+            svg.selectAll("circle")
+                .data(data)
+                .enter()
+                .append("circle")
+                .attr("class", "dot")
+                .attr("cx", d => xScale(d.Event) + xScale.bandwidth() / 2)
+                .attr("cy", d => yScale(d["Sub-Class"]) + yScale.bandwidth() / 2)
+                .attr("r", d => radiusScale(d["Participant Count"]))
+                .style("fill", d => colorScale(d["Sub-Class"]))
+                .style("opacity", 0.7)
+                .on("mouseover", function(event, d) {
+                    d3.select(this)
+                        .style("stroke", "#333")
+                        .style("stroke-width", 2)
+                        .style("opacity", 1);
+
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", .9);
+
+                    tooltip.html(`
+                        <strong>${d.Event}</strong><br/>
+                        ${d["Sub-Class"]}<br/>
+                        Participants: ${d["Participant Count"]}
+                    `)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", function() {
+                    d3.select(this)
+                        .style("stroke", "none")
+                        .style("opacity", 0.7);
+
+                    tooltip.transition()
+                        .duration(500)
+                        .style("opacity", 0);
+                });
+
+            // Add title
+            svg.append("text")
+                .attr("class", "title")
+                .attr("x", width / 2)
+                .attr("y", -margin.top / 2)
+                .attr("text-anchor", "middle")
+                .text("Event Participation Analysis");
+
+            // Add axis labels
+            svg.append("text")
+                .attr("class", "axis-label")
+                .attr("x", width / 2)
+                .attr("y", height + margin.bottom - 40)
+                .attr("text-anchor", "middle")
+                .text("Events");
+
+            svg.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", "rotate(-90)")
+                .attr("x", -height / 2)
+                .attr("y", -margin.left + 20)
+                .attr("text-anchor", "middle")
+                .text("Categories");
+
+            // Create interactive legend
+            const legend = d3.select(".container")
+                .append("div")
+                .attr("class", "legend");
+
+            const legendItems = legend.selectAll(".legend-item")
+                .data(uniqueSubClasses)
+                .enter()
+                .append("div")
+                .attr("class", "legend-item");
+
+            legendItems.append("div")
+                .attr("class", "legend-color")
+                .style("background-color", d => colorMap.get(d));
+
+            legendItems.append("input")
+                .attr("type", "color")
+                .attr("class", "color-picker")
+                .attr("value", d => colorMap.get(d))
+                .on("input", function(event, d) {
+                    const newColor = event.target.value;
+                    colorMap.set(d, newColor);
+                    d3.select(this.parentNode)
+                        .select(".legend-color")
+                        .style("background-color", newColor);
+                    updateColors();
+                });
+
+            legendItems.append("span")
+                .attr("class", "legend-text")
+                .text(d => d);
+        }).catch(error => {
+            console.error("Error loading the CSV file:", error);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Performance Heatmap</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        /* Previous styles remain the same */
+        body {
+            font-family: "Arial", sans-serif;
+            background-color: #f8f9fa;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        svg {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 10px;
+        }
+        rect.cell {
+            stroke: #ffffff;
+            stroke-width: 2px;
+            rx: 6;
+            ry: 6;
+            transition: all 0.2s ease-in-out;
+        }
+        rect.cell:hover {
+            stroke: #ffffff;
+            stroke-width: 3px;
+            transform: scale(1.02);
+            filter: brightness(1.1);
+            cursor: pointer;
+            z-index: 1;
+        }
+        .axis text {
+            font-size: 12px;
+            font-weight: 500;
+            fill: #2c3e50;
+        }
+        .axis line, .axis path {
+            stroke: #e0e0e0;
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(33, 33, 33, 0.9);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            visibility: hidden;
+            pointer-events: none;
+            line-height: 1.5;
+        }
+        h1 {
+            color: #2c3e50;
+            font-size: 28px;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <h1>Performance Heatmap</h1>
+    <svg width="1100" height="650"></svg>
+    <div class="tooltip"></div>
+
+<script>
+    d3.csv("data2.csv").then(function(data) {
+        data.forEach(d => {
+            d["Performance Score"] = +d["Performance Score"];
+        });
+
+        let events = [...new Set(data.map(d => d.Event))];
+        let ageGroups = [...new Set(data.map(d => d["Merged Category"]))].sort((a, b) => {
+            return d3.ascending(parseInt(a.split('-')[0]), parseInt(b.split('-')[0]));
+        });
+
+        let margin = { top: 50, right: 80, bottom: 150, left: 120 };
+        let width = 1100 - margin.left - margin.right;
+        let height = 650 - margin.top - margin.bottom;
+
+        let svg = d3.select("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        let xScale = d3.scaleBand()
+            .domain(events)
+            .range([0, width])
+            .padding(0.2);
+
+        let yScale = d3.scaleBand()
+            .domain(ageGroups)
+            .range([height, 0])
+            .padding(0.2);
+
+        // New color scale using purple
+        let colorScale = d3.scaleLinear()
+            .domain([0, 1]) // Setting the domain from 0 to 1 directly
+            .range(["#f3e5f5", "#4a148c"]); // Light purple to dark purple
+
+        let tooltip = d3.select(".tooltip");
+
+        svg.selectAll("rect")
+            .data(data)
+            .enter().append("rect")
+            .attr("class", "cell")
+            .attr("x", d => xScale(d.Event))
+            .attr("y", d => yScale(d["Merged Category"]))
+            .attr("width", xScale.bandwidth())
+            .attr("height", yScale.bandwidth())
+            .attr("fill", d => colorScale(d["Performance Score"]))
+            .attr("rx", 6)
+            .attr("ry", 6)
+            .on("mouseover", (event, d) => {
+                d3.select(event.currentTarget).raise();
+                tooltip.style("visibility", "visible")
+                    .html(`
+                        <strong>Event:</strong> ${d.Event}<br>
+                        <strong>Age Group:</strong> ${d["Merged Category"]}<br>
+                        <strong>Performance:</strong> ${d["Performance Score"].toFixed(5)}
+                    `)
+                    .style("top", (event.pageY - 10) + "px")
+                    .style("left", (event.pageX + 10) + "px");
+            })
+            .on("mousemove", (event) => {
+                tooltip.style("top", (event.pageY - 10) + "px")
+                       .style("left", (event.pageX + 10) + "px");
+            })
+            .on("mouseout", () => tooltip.style("visibility", "hidden"));
+
+        // Axes
+        svg.append("g")
+            .attr("class", "axis")
+            .attr("transform", `translate(0,${height})`)
+            .call(d3.axisBottom(xScale))
+            .selectAll("text")
+            .attr("transform", "rotate(-45)")
+            .style("text-anchor", "end")
+            .style("font-size", "12px");
+
+        svg.append("g")
+            .attr("class", "axis")
+            .call(d3.axisLeft(yScale))
+            .selectAll("text")
+            .style("font-size", "12px");
+
+        // Legend with correct gradient scale
+        let legend = svg.append("g")
+            .attr("transform", `translate(${width + 30}, 50)`);
+
+        let legendScale = d3.scaleLinear()
+            .domain([0, 1]) // Match the domain of the color scale
+            .range([200, 0]); // Ensures the gradient is displayed in the correct order
+
+        let legendAxis = d3.axisRight(legendScale)
+            .ticks(6)
+            .tickFormat(d3.format(".2f")); // Exponential format for performance values
+
+        let legendGradient = svg.append("defs").append("linearGradient")
+            .attr("id", "legendGradient")
+            .attr("x1", "0%").attr("y1", "100%")
+            .attr("x2", "0%").attr("y2", "0%");
+
+        // Simple two-color gradient for legend
+        legendGradient.append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", "#f3e5f5");
+
+        legendGradient.append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", "#4a148c");
+
+        legend.append("rect")
+            .attr("width", 20)
+            .attr("height", 200)
+            .style("fill", "url(#legendGradient)")
+            .attr("rx", 4)
+            .attr("ry", 4);
+
+        legend.append("g")
+            .attr("transform", "translate(25,0)")
+            .call(legendAxis)
+            .selectAll("text")
+            .style("font-size", "11px");
+
+        legend.append("text")
+            .attr("x", -60)
+            .attr("y", -10)
+            .attr("fill", "#2c3e50")
+            .attr("font-size", "14px")
+            .attr("font-weight", "bold")
+            .text("Performance Score");
+    });
+</script>
+
+</body>
+</html>

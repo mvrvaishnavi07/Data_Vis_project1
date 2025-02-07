@@ -1,0 +1,65 @@
+Event,Sub-Class,Participant Count
+100k,Standard,28
+100k,Unlimited,64
+100m,Standard,297
+100m,Expert,16
+10k,Standard,162
+10k,Unlimited,91
+10m Wheel Walk,Standard,159
+30m Wheel Walk,Expert,16
+400m,Standard,233
+400m,Expert,49
+50m One-Foot,Standard,118
+50m One-Foot, Expert,16
+800m,Standard,139
+800m ,Expert,16
+Basketball,ABC,49
+Cyclocross, Standard,140
+Cyclocross ,Unlimited,35
+Downhill Gliding,Standard,140
+Flatland ,Expert,66
+High Jump,Standard,102
+High Jump ,Expert,12
+Hockey,AB,117
+Individual Freestyle,Standard,103
+Individual Freestyle ,Expert,29
+IUF Slalom,Standard,225
+IUF Slalom ,Expert,16
+Large Group ,Expert,145
+Long Jump,Standard,87
+Long Jump, Expert,13
+Long Jump, On Platform Expert,18
+Marathon, Standard,47
+Marathon,Unlimited,102
+Muni Cross Country ,Beginner,114
+Muni Cross Country ,Elite Standard,66
+Muni Cross Country ,Elite Unlimited,19
+Muni Downhill ,Advanced,104
+Muni Downhill, Beginner,77
+Muni Downhill ,Elite,30
+Muni Uphill,Standard,141
+Pairs Freestyle,Standard,138
+Pairs Freestyle, Expert,34
+Pairs Freestyle,Standard,22
+Platform High Jump,Standard,81
+Platform High Jump, Expert,22
+Platform Long Jump,Standard,61
+Rail Race,Standard,112
+Slopestyle Street ,Advanced,15
+Slopestyle Street, Expert,10
+Slow Backward,Standard,215
+Slow Backward ,Expert,10
+Slow Forward,Standard,299
+Slow Forward, Expert,16
+Small Group,Standard,136
+Speed Trials,Standard,94
+Speed Trials ,Beginner,94
+Speed Trials ,Expert,24
+Stillstand,Standard,157
+Street ,Expert,30
+Street, Advanced,14
+Track Coasting,Standard,106
+Trials,Standard,103
+Trials ,Expert,19
+X-Style,Standard,53
+X-Style ,Jr.,9

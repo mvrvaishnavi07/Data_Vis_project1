@@ -1,0 +1,208 @@
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Country-wise Participation Analysis</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        .chart-container {
+            font-family: Arial, sans-serif;
+            width: 100%;
+            max-width: 1800px;
+            margin: 20px auto;
+            background-color: #F0F6F6;
+            border-radius: 4px;
+            /* padding: 20px; */
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            overflow-x: auto; 
+        }
+        .bar {
+            stroke: #000;
+            stroke-width: 1;
+        }
+        .bar:hover {
+            opacity: 0.8;
+        }
+        .axis-label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .tooltip {
+            position: absolute;
+            padding: 10px;
+            /* background-color: #DCCFEC; */
+            /* background-color: gray; */
+            background: rgba(33, 33, 33, 0.9);;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            pointer-events: none;
+            font-size: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            color: white;
+        }
+        .legend {
+            font-size: 12px;
+        }
+        .legend rect {
+            stroke: #000;
+            stroke-width: 1;
+        }
+        .grid line {
+            stroke: #ddd;
+            stroke-opacity: 0.7;
+            shape-rendering: crispEdges;
+        }
+        .grid path {
+            stroke-width: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center; font-family: Arial, sans-serif; margin-top: 20px;">Country vs Participants</h1>
+    <div class="chart-container"></div>
+    <h1></h1>
+    <script>
+        const margin = {top: 60, right: 130, bottom: 100, left: 80};
+        const width = 1900 - margin.left - margin.right;
+        const height = 650 - margin.top - margin.bottom;
+
+        const svg = d3.select(".chart-container")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        d3.csv("data3.csv").then(function(data) {
+            data.forEach(d => {
+                d.Female = +d.Female;
+                d.Male = +d.Male;
+            });
+
+            const x0 = d3.scaleBand()
+                .domain(data.map(d => d.Country))
+                .rangeRound([0, width])
+                .padding(0.4);
+
+            const x1 = d3.scaleBand()
+                .domain(["Female", "Male"])
+                .rangeRound([0, x0.bandwidth()])
+                .padding(0.15);
+
+            const maxValue = d3.max(data, d => Math.max(d.Female, d.Male));
+            const yMaxValue = Math.ceil(maxValue / 20) * 20;
+
+            const y = d3.scaleLinear()
+                .domain([0, yMaxValue])
+                .range([height, 0]);
+
+            const yTickValues = d3.range(0, yMaxValue + 20, 20);
+
+            svg.append("g")
+                .attr("class", "grid")
+                .call(d3.axisLeft(y)
+                    .tickValues(yTickValues)
+                    .tickSize(-width)
+                    .tickFormat("")
+                );
+
+            const color = d3.scaleOrdinal()
+                .domain(["Female", "Male"])
+                .range(["#42BFDD", "#084B83"]);
+
+            // Add legend at top
+            const legend = svg.append("g")
+                .attr("class", "legend")
+                .attr("transform", `translate(${width/2 - 50}, ${-50})`);
+
+            ["Female", "Male"].forEach((gender, i) => {
+                const legendRow = legend.append("g")
+                    .attr("transform", `translate(${i * 100}, 0)`);
+                
+                legendRow.append("rect")
+                    .attr("width", 20)
+                    .attr("height", 20)
+                    .attr("fill", color(gender));
+                
+                legendRow.append("text")
+                    .attr("x", 30)
+                    .attr("y", 10)
+                    .attr("dy", ".35em")
+                    .text(gender)
+                    .style("font-size", "12px");
+            });
+
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x0))
+                .selectAll("text")
+                .style("text-anchor", "end")
+                .attr("dx", "-.8em")
+                .attr("dy", ".15em")
+                .attr("transform", "rotate(-45)")
+                .style("font-size", "12px");
+
+            svg.append("g")
+                .call(d3.axisLeft(y)
+                    .tickValues(yTickValues)
+                    .tickFormat(d => d))
+                .selectAll("text")
+                .style("font-size", "12px");
+
+            svg.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", "rotate(-90)")
+                .attr("y", -margin.left + 30)
+                .attr("x", -height/2)
+                .attr("text-anchor", "middle")
+                .text("Participants")
+                .style("font-size", "14px");
+
+            const tooltip = d3.select("body")
+                .append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0);
+
+            data.forEach(d => {
+                svg.append("g")
+                    .selectAll("rect")
+                    .data(["Female", "Male"])
+                    .join("rect")
+                    .attr("class", "bar")
+                    .attr("x", gender => x0(d.Country) + x1(gender))
+                    .attr("y", gender => y(d[gender]))
+                    .attr("width", x1.bandwidth())
+                    .attr("height", gender => height - y(d[gender]))
+                    .attr("fill", gender => color(gender))
+                    .on("mouseover", function(event, gender) {
+                        d3.select(this)
+                            .transition()
+                            .duration(200)
+                            .style("opacity", 0.7);
+                        
+                        tooltip.transition()
+                            .duration(200)
+                            .style("opacity", .9);
+                        
+                        tooltip.html(`<strong>${d.Country}</strong><br>${gender}: ${d[gender]}`)
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 28) + "px");
+                    })
+                    .on("mouseout", function() {
+                        d3.select(this)
+                            .transition()
+                            .duration(200)
+                            .style("opacity", 1);
+                        
+                        tooltip.transition()
+                            .duration(500)
+                            .style("opacity", 0);
+                    });
+            });
+        }).catch(function(error) {
+            console.error("Error loading the CSV file:", error);
+        });
+    </script>
+</body>
+</html>
